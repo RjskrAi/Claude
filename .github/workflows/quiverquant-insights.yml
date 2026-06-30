@@ -28,12 +28,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          OUTPUT=$(cat insights_output.txt)
           DATE=$(date '+%Y-%m-%d %H:%M UTC')
-
-          # Create or update a pinned issue for daily insights
           ISSUE_NUM=$(gh issue list --label "quiverquant-insights" --state open --json number --jq '.[0].number')
-
           if [ -z "$ISSUE_NUM" ]; then
             ISSUE_NUM=$(gh issue create \
               --title "QuiverQuant Daily Insights" \
@@ -41,12 +37,8 @@ jobs:
               --label "quiverquant-insights" \
               --json number --jq '.number')
           fi
-
-          gh issue comment "$ISSUE_NUM" --body "## Insights — $DATE
-
-\`\`\`
-$OUTPUT
-\`\`\`"
+          BODY="## Insights — $DATE"$'\n\n''```'$'\n'"$(cat insights_output.txt)"$'\n''```'
+          gh issue comment "$ISSUE_NUM" --body "$BODY"
 
       - name: Upload raw output as artifact
         uses: actions/upload-artifact@v4
