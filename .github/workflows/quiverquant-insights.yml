@@ -1,0 +1,56 @@
+name: QuiverQuant Market Insights
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'  # 9 AM ET, weekdays only
+  workflow_dispatch:          # manual trigger from GitHub mobile app
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run QuiverQuant insights
+        env:
+          QUIVER_API_KEY: ${{ secrets.QUIVER_API_KEY }}
+        run: python main.py > insights_output.txt 2>&1
+
+      - name: Post insights as GitHub Issue comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OUTPUT=$(cat insights_output.txt)
+          DATE=$(date '+%Y-%m-%d %H:%M UTC')
+
+          # Create or update a pinned issue for daily insights
+          ISSUE_NUM=$(gh issue list --label "quiverquant-insights" --state open --json number --jq '.[0].number')
+
+          if [ -z "$ISSUE_NUM" ]; then
+            ISSUE_NUM=$(gh issue create \
+              --title "QuiverQuant Daily Insights" \
+              --body "Daily market insights feed from QuiverQuant." \
+              --label "quiverquant-insights" \
+              --json number --jq '.number')
+          fi
+
+          gh issue comment "$ISSUE_NUM" --body "## Insights — $DATE
+
+\`\`\`
+$OUTPUT
+\`\`\`"
+
+      - name: Upload raw output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiverquant-insights
+          path: insights_output.txt
+          retention-days: 7
