@@ -24,12 +24,12 @@ jobs:
           QUIVER_API_KEY: ${{ secrets.QUIVER_API_KEY }}
         run: python main.py > insights_output.txt 2>&1
 
-      - name: Post insights as GitHub Issue comment
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Post insights to job summary
         run: |
-          python post_insights.py
-          gh issue comment "$(cat issue_num.txt)" --body-file comment_body.txt
+          echo "## QuiverQuant Insights — $(date '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat insights_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload raw output as artifact
         uses: actions/upload-artifact@v4
